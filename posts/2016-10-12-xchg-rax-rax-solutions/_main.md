@@ -1145,8 +1145,36 @@ This little gem calculates the next biggest integer with the same weight (number
 the following sequences (feeding it its previous output every step):
 
  -  1, 2, 4, 8, 16, 32, ... (powers of 2 are the weight-1 sequence)
- -  0b11, 0b101, 0b110, 0b1001, 0b1010, 0b1100, ...
- -  0b111, 0b1011, 0b1101, 0b1110, 0b10011, ...
+ -  11<sub>2</sub>, 101<sub>2</sub>, 110<sub>2</sub>, 1001<sub>2</sub>, 1010<sub>2</sub>, 1100<sub>2</sub>, ...
+ -  111<sub>2</sub>, 1011<sub>2</sub>, 1101<sub>2</sub>, 1110<sub>2</sub>, 10011<sub>2</sub>, ...
+
+But how does it actually work? We can start by thinking about how we would get the successor
+of a binary integer in the same weight class (i.e. keeping the same number of set bits and just moving them around):
+
+ * If there is a single isolated set bit at the bottom of the integer, then we just shift it left by one position and we are done. For example 11001<sub>2</sub> becomes 11010<sub>2</sub>.
+ * Otherwise the bottom-most set bits form a 'run' of length _k_ (say). In this case we need to shift the topmost bit of that run left by one position and then take the remaining _k-1_ bits and put them at the bottom of the new integer. For example 1011100<sub>2</sub> becomes 1100011<sub>2</sub> with the top bit of the run of three 1s moving up one position and the remaining 2 bits landing at the bottom of the new integer.
+
+To help understand the algorithm consider writing the general non-zero binary number as the concatenated sequence A0BZ, where:
+* A is a possibly empty combination of 1s and 0s.
+* B is a sequence of _k_ set bits with _k >= 1_.
+* Z is a sequence of _l_ zeroes, where _l_ can be zero (e.g. all odd numbers)
+
+The second stanza of the snippet calculates `x | (x - 1)`. The `x - 1` part zeroes the bottom-most bit of B and converts all the bits of Z to 1s. 
+OR'ing the results with `x` will produce the binary string A0BZ' where Z' is the binary complement of Z (i.e. a a string of _l_ 1s). The result is then
+incremented in the third stanza to give A1B'Z (where B' is the complement of B). These two stanzas accomplish the first part of the algorithm which is
+to shift left by one position the top-most bit of the bottom-most run of 1s.
+
+ The only thing that remains is to move the _k-1_ remaining set bits of B to the bottom of the integer.
+This is accomplished in two steps in the fourth and fifth stanza. In order to make the formulas less awkward define:
+ `d := x | (x - 1)`. This is the binary string A0BZ' composed earlier which was saved into `rdx`.
+
+With this definition, the fourth stanza calculates `(d + 1) & ~d`. As we saw, `d + 1` 
+is just the binary string A1B'Z where the bottom-most run of set bits has been replaced with a single
+set bit one position above where the run was and `~d` is A'1B'Z. AND'ing them together will eliminate the 'A' prefix
+and give us a single set bit in the pattern 01B'Z. The next instruction decrements this result leaving us with a
+string of set bits of length _k + l_ in the pattern 00BZ'. The fifth stanza then shifts this right by _l + 1_ positions
+leaving us with a run of _k - 1_ set bits at the bottom of the integer exactly as desired. The final stanza then
+puts the two parts of the result together. Beautiful!
 
 Try it in python:
 
