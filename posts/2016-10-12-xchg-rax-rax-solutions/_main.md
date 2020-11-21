@@ -378,23 +378,81 @@ Note that this requires the 32 most significant bits in `rax` to be cleared.
 Computes the following:
 
 ```text
-rsi := (rax ^ rbx) + (rbx ^ rcx)
+s := (a ^ b) + (b ^ c)
 if (overflew(rsi))
-    rax := 0
+    t := 0
 else
-    rax := rax ^ rcx
-cmp(rax, rsi)
+    t := a ^ c
+return cmp(t, s)
 ```
 
-Observations:
-- If `rax` == `rbx`: No overflow.
-- If `rcx` == `rbx`: No overflow.
-- If `rax` == `~rbx`: Always overflows, except when `rbx` == `rcx`.
-- If `rbx` == `rax|rcx`: No overflow.
-- If `rbx` == `rax&rcx`: No overflow.
+This is a very odd bit of code. If there is no overflow then then can use the "carry bit separation" formula to conclude that the comparison will always return less-or-equal as follows:
 
-*TODO: No idea about this one.*
+```Python
+A + B == (A ^ B) + ((A & B) << 1)       # Separating out carry bits
+(a ^ b) + (b ^ c) == (a ^ b ^ b ^ c) + (((a ^ b) & (b ^ c)) << 1) == (a ^ c) + (((a ^ b) & (b ^ c)) << 1) >= a ^ c
+```
 
+In the case where there is an overflow, then the LHS of the comparison is replaced with zero and the comparison still returns less-or-equal.
+Hence we should focus on the conditions under which the comparison returns equality.
+
+When there is no overflow, we saw above that equality can only occur when the carry bits are zero (i.e. `(a ^ b) & (b ^ c) == 0`). This implies that for every bit _i_
+we have:
+
+<p align="center"> <it>a<sub>i</sub> ^ b<sub>i</sub> == 0 </it>  ||  <it> b<sub>i</sub> ^ c<sub>i</sub> == 0
+</p>
+
+When <it>a<sub>i</sub></it> is different from <it>c<sub>i</sub></it>, the value of <it>b<sub>i</sub></it> is completely unconstrained (try putting values in the
+above equation to convince yourself). When they are equal however, <it>b<sub>i</sub></it> has to also be equal to their common value. We can write this as:
+<p align="center">
+min(<it>a<sub>i</sub></it>, <it>c<sub>i</sub></it>) <= <it>b<sub>i</sub></it> <= max(<it>a<sub>i</sub></it>, <it>c<sub>i</sub></it>)
+</p>
+
+Another way to think about it is that every bit of `b` must be equal to the corresponding bit in either `a` or `c`. Hence, given `a` and `c` we
+can construct a `b` that satisfies the equality constraint by choosing a random mask `R` and setting:
+
+<p align="center">
+<code class="text">b = (a & R) | (c & ~R)</code>
+</p>
+
+As we are free to choose bit _b<sub>i</sub>_ of `b` when _a<sub>i</sub>_ and _c<sub>i</sub>_ differ, we can conclude that the
+no-overflow case gives us two to the power of `popcount(a ^ c)` distinct solutions.
+
+For the case where we have overflow, the equation becomes:
+
+<p align="center"><code class="text">
+0 == (a ^ b) + (b ^ c) => a ^ b == -(b ^ c) == ~(b ^ c) + 1
+</code></p>
+
+As we are only considering cases where there is overflow, then `b ^ c` cannot be equal to
+zero and hence we can let _k_ be the lowest bit of `b ^ c` that is set. The
+addtion on the RHS will cause a cascade of carries (as all bits below _k_ in `~(b ^ c)` are set) which will terminate on bit _k_. Hence the combination of the above conditions gives us:
+
+<p align="center">
+<it>a<sub>i</sub> ^ b<sub>i</sub> == 1 ^ b<sub>i</sub> ^ c<sub>i</sub> => a<sub>i</sub> == 1 ^ c<sub>i</sub></it> for <it>i > k</it>
+</p>
+<p align="center">
+<it>b<sub>k</sub> ^ c<sub>k</sub> == 1 => b<sub>k</sub> == 1 ^ c<sub>k</sub></it>
+</p>
+<p align="center">
+<it>a<sub>k</sub> ^ b<sub>k</sub> == 1 ^ b<sub>k</sub> ^ c<sub>k</sub> ^ 1 => a<sub>k</sub> = c<sub>k</sub></it>
+</p>
+<p align="center">
+<it>b<sub>i</sub> ^ c<sub>i</sub> == 0 =>  b<sub>i</sub> == c<sub>i</sub></it> for <it> i < k </it>
+<p align="center">
+<it>a<sub>i</sub> ^ b<sub>i</sub> == b<sub>i</sub> ^ c<sub>i</sub> =>  a<sub>i</sub> == c<sub>i</sub></it> for <it> i < k </it>
+</p>
+
+For the overflow solution to exist, the bottom _k+1_ bits of `a` and `c` need to be identical and none of the remaining top bits can be the same. The bottom
+_k+1_ bits of `b` are then fixed by the equations above (bottom _k_ are equal to the common value in `a` and `c`, and _b_<sub>_k_</sub> is the opposite of _c_<sub>_k_</sub>) and the
+remaining bits are free, giving us another two to the power `popcount(a ^ c)` solutions. 
+
+The Python script [xorpd_0x16.py](./xorpd_0x16.py) has several functions that count, generate and verify the solutions of this snippet for any chosen word size. By default it will
+display all solutions for a word size of 3. 
+
+Although we have found all possible values of `a, b, c` that satisfy the comparison in this snippet, we are still none the wiser as to its purpose.
+
+(thanks [@eleemosynator](https://twitter.com/eleemosynator))
 
 ### Snippet 0x17
 
