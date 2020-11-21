@@ -1435,8 +1435,28 @@ Both the snippet version and the interleaved increment version of the algorithm 
     and      rax,0x3
 ```
 
-Computes the direction of the lines in the (Heighway) Dragon Curve by computing `popcnt(rax ^ (rax >> 1)) & 3`. This produces the sequence [A246960](https://oeis.org/A246960), the fixed point of the morphism *{0 -> (0,1), 1 -> (2,1), 2 -> (2,3), 3 -> (0,3)}*.
+This snippet calculates `popcount(x ^ (x >> 1)) & 3`, in other words the number of set bits in the [Gray Code](https://en.wikipedia.org/wiki/Gray_code) of index `x` modulo 4. 
+By the defining property of Gray Code, we know that consecutinve Gray Codes will differ in weight by exactly one. If we were to interpret the output of 
+this snippet as a direction on the 2D plane, then the result would be some kind of curve constructed from left and right 90 degree turns. We would never see
+a straight segment and the curve would never try to go back on itself. Drawing this produces:
 
+<p align="center"><img src="./xorpd_0x3e_dragon.png" alt="Heighway Dragon"/></o>
+
+The result is the [Heighway Dragon](https://en.wikipedia.org/wiki/Dragon_curve)! The weight sequence of Gray Codes actually generates the Heighway Dragon curve! We can see how this
+works using the following arguement:
+
+Remember that the Gray Code sequence is constructed using a 'doubling' algorithm where we start with the sequence G<sub>0</sub> = (0<sub>2</sub>, 1<sub>2</sub>) and construct the successor
+sequence by adding a set bit to the top of each element of the current sequence, reversing the order and then appending to the current sequence. Using this approach,
+we get G<sub>1</sub> = (0<sub>2</sub>, 1<sub>2</sub>, 11<sub>2</sub>, 10<sub>2</sub>) and G<sub>2</sub> = (0<sub>2</sub>, 1<sub>2</sub>, 11<sub>2</sub>, 10<sub>2</sub>, 110<sub>2</sub>, 111<sub>2</sub>, 101<sub>2</sub>, 100<sub>2</sub>), etc.
+
+The corresponding weight sequences are then: W<sub>0</sub> = (0, 1), W<sub>1</sub> = (0, 1, 2, 1), W<sub>1</sub> = (0, 1, 2, 1, 2, 3, 2, 2. 1), etc. Each new generation is built by
+taking the previous generation in reverse order and adding one to each element. When interpreted as directions in space, we are rotating clockwise (say) by 90 degrees and retracing
+our steps backwards - this is exactly the same as taking everything we've drawn so far and rotating it by 90 degrees around the last point we reached. The
+Wikipedia page has a very beautiful visualization of how this algorithm results in Dragon Curve:
+
+<p align="center"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a0/Dragon_Curve_unfolding_zoom_numbered.gif"/></p>
+
+The drawing algorithm is implemented in the Python script [xorpd_0x3e_dragon.py](./xorpd_0x3e_dragon.py) (requires [Pillow](https://pillow.readthedocs.io/en/stable/)).
 
 ### Snippet 0x3F
 
