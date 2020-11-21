@@ -450,7 +450,7 @@ remaining bits are free, giving us another two to the power `popcount(a ^ c)` so
 The Python script [xorpd_0x16.py](./xorpd_0x16.py) has several functions that count, generate and verify the solutions of this snippet for any chosen word size. By default it will
 display all solutions for a word size of 3. 
 
-Although we have found all possible values of `a, b, c` that satisfy the comparison in this snippet, we are still none the wiser as to its purpose.
+Although we have found all possible values of `a, b, c` that satisfy the comparison in this snippet, we are still none the wiser as to its purpose. Perhaps the solution is the purpose in this case?
 
 (thanks [@eleemosynator](https://twitter.com/eleemosynator))
 
