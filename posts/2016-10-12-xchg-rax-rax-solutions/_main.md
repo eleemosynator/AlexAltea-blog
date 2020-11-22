@@ -1450,8 +1450,8 @@ sequence by adding a set bit to the top of each element of the current sequence,
 we get G<sub>1</sub> = (0<sub>2</sub>, 1<sub>2</sub>, 11<sub>2</sub>, 10<sub>2</sub>) and G<sub>2</sub> = (0<sub>2</sub>, 1<sub>2</sub>, 11<sub>2</sub>, 10<sub>2</sub>, 110<sub>2</sub>, 111<sub>2</sub>, 101<sub>2</sub>, 100<sub>2</sub>), etc.
 
 The corresponding weight sequences are then: W<sub>0</sub> = (0, 1), W<sub>1</sub> = (0, 1, 2, 1), W<sub>1</sub> = (0, 1, 2, 1, 2, 3, 2, 2. 1), etc. Each new generation is built by
-taking the previous generation in reverse order and adding one to each element. When interpreted as directions in space, we are rotating clockwise (say) by 90 degrees and retracing
-our steps backwards - this is exactly the same as taking everything we've drawn so far and rotating it by 90 degrees around the last point we reached. The
+taking the previous generation in reverse order and adding one to each element. When interpreted as directions in space, we are rotating by 90 degrees and retracing
+our steps in reverse order - this is exactly the same as taking everything we've drawn so far and rotating it by 90 degrees around the last point we reached. The
 Wikipedia page has a very beautiful visualization of how this algorithm results in Dragon Curve:
 
 <p align="center"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a0/Dragon_Curve_unfolding_zoom_numbered.gif"/></p>
