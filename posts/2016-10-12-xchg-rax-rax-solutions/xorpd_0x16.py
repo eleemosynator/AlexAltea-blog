@@ -32,6 +32,21 @@ def num_solutions(a, c, bits):
 		solns += 1 << popcount(a ^ c)
 	return solns
 
+# Total solutions for n bits:
+# No-Overflow solutions:
+#  For each of $2^n$ choices of a there are $C(n, r)$ choices of c such that c differs in exactly r bits
+#  and each such combination gives rise to $2^r$ values for b. Hence the total No-Overflow solutions are:
+#  $$2^n \sum_{r=0}^n C(n, r) 2^r = 2^n (1 + 2)^n = 6^n$$
+#  Using the binomial expansion theorem.
+# Overflow solutions:
+#  For each of $2^n$ choices of a there is exactly one choice of c that is different to a on all r top bits and
+#  the same as a on the remaining bottom bits, however r has to be less than n as a and c need to match on at least
+#  one bit. There are 2^r choices for b given this (a, c) pair. Hence we have:
+#  $$2^n\sum_{r=0}^{n-1} 2^r = 2^n(2^n - 1) = 4^n - 2^n$$
+# And the total is: $6^n + 4^n - 2^n$
+def num_total_solutions(bits):
+	return pow(6, bits) + pow(4, bits) - pow(2, bits)
+
 def count_solutions(a, c, bits):
 	n = 0
 	for b in xrange(1 << bits):
@@ -89,15 +104,22 @@ def check_solution_counts(bits):
 
 def verify_solutions(bits):
 	gb = lambda x: get_bin(x, bits)
+	total = 0
 	for a, c in itertools.product(range(1 << bits), repeat=2):
 		# problem is symmetric in a, c
 		if a < c:
 			continue
-		if set(brute_solutions(a, c, bits)) != set(generate_solutions(a, c, bits)):
+		sols = set(brute_solutions(a, c, bits))
+		if sols != set(generate_solutions(a, c, bits)):
 			print('Failed to generate correct solutions for (%02x, %02x)' % (a, c))
 			print(list(map(gb, brute_solutions(a, c, bits))))
 			print(list(map(gb, generate_solutions(a, c, bits))))
 			break
+		if a == c:
+			total += len(sols)
+		else:
+			total += 2 * len(sols)
+	assert total == num_total_solutions(bits)
 
 
 def show_solutions(bits):
@@ -114,6 +136,8 @@ def show_solutions(bits):
 if __name__ == '__main__':
 	check_solution_counts(4)
 	verify_solutions(4)
+	bits = 3
 	print('All solutions for word size of 3 bits (format is a, c, b, overflow)')
-	show_solutions(3)
+	show_solutions(bits)
+	print('%d total solutions' % num_total_solutions(bits))
 
