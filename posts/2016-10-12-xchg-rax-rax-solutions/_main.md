@@ -1368,12 +1368,86 @@ through all non-zero 32-bit integers. It also uses the `cdq` trick to expand the
 This snippet expects a number in `rax` and returns two outputs which are -1, 1 or 0 in `rax` and `rdx`. If we interpret the input as a sequence number and the outputs as steps in two dimensions (i.e. *dx* and *dy*) we can draw the result: 
 
 <p align="center">
-    <img src="xorpd_0x3c_hilbert.png" width="512"/>
+    <img src="xorpd_0x3c_hilbert.gif" width="512"/>
 </p>
 
-This truly mind-blowing snippet draws a [Hilbert Curve](https://en.wikipedia.org/wiki/Hilbert_curve) in 21 assembly instructions without using recursion or branches. You can experiment with the Python implementation of the algorithm in [xorpd_0x3c_hilbert.py](./xorpd_0x3c_hilbert.py) (requires [Pillow](https://pillow.readthedocs.io/en/stable/)).
+This truly mind-blowing snippet generates a [Hilbert Curve](https://en.wikipedia.org/wiki/Hilbert_curve) in 21 assembly instructions without using recursion or branches.
+But how does this actually work? It seems that the first two stanzas calculate two single bit values in `rbx` and `rax`, which we'll call *r* and *s* for brevity.
+The last stanza converts the two single bit values into a _(dx, dy)_ direction vector using the following calculations:
 
-<!-- TODO: Write an explanation of why this works -->
+|_r_|_s_|_dx = 1 - r - s_|_dy = r - s_|direction|
+|:-:|:-:|:--------------:|:----------:|:-------:|
+| 0 | 0 |       +1       |      0     |    E    | 
+| 0 | 1 |        0       |     -1     |    S    | 
+| 1 | 0 |        0       |      1     |    N    | 
+| 1 | 1 |       -1       |      0     |    W    | 
+
+Flipping _r_ exchanges East with North and South with West effectively mirroring the directions around the main _x = y_ diagonal.
+Flipping _s_ exchanges East with South and North with West mirroring the directions around the perpendicular _x = -y_ diagonal.
+
+The first stanza takes the input index in `rax` and counts the number of consecutive pairs of set bits at even positions. For example, the number 7
+is 111<sub>2</sub> in binary and has exactly one pair of consecutive set bits at an even position: bits zero and one. This calculation
+is equivalent to writing the number in base 4 and counting the number of 3s in that representation. Continuing the earlier example,
+the number 7 is written as 13<sub>4</sub> in base 4 and has exactly one 3 in it. Finally, the first stanza calculates _r_ as the parity of the number
+of 3s in the base-4 representation of the input index.
+
+The second stanza performs the same calculation (parity of number of 3s of base-4 representation) on `neg rax`. The simplest way to reason about
+this is to use the identity `neg(x) == not(x) + 1`. If the input index `x` does not have zero as its last digit, then `not(x)` will have zero, one or
+two and adding one (to get the 2s complement) will not carry to the higher digits and affect the count of 3s. Hence we can think of the second
+stanza (and hence _s_) as calculating the number of zeroes (which will `not` to 3s) in the upper digits of the base-4 representation of the input
+index plus an additional one if the last digit is 1 (which will `not` to 2 and then get incremented to a 3). The case where the input index
+ends in a zero (in base=4) seems harder to reason about, so we'll park it for now. 
+
+Notice that the Hilbert Curve weaves its way around the square by filling a small 2x2-pixel quadrant first, then replicating than pattern (rotated) to
+fill four 2x2-pixel quadrants and so on, hence it makes sense to look at the index in the curve in base-4: each digit will tell you
+how far along you are in filling the quadrants of the corresponding level of hierarchy. For example, at index 321<sub>4</sub> we expect
+that the curve is filling the fourth 8x8 quadrant of a 16x16 square, the third 4x4 sub-quadrant of that 8x8 and is on the second pixel of that 2x2 sub-quadrant.
+It's also worth noting that the direction in which the curve traverses the quadrants flips with every hierarchy level: In the top left corner,
+1x1 pixels are traversed in a clockwise manner, but then the top left 4x4 is traversed counter-clockwise and then the top left 16x16 clockwise, etc
+
+In order to get a better sense of how the parity counts interact to draw the curve, let's imagine that our integers have
+only two digits in base-4 (in general, an even number of digits will lead to the same conclusion) and see what that means
+for the generated directions (we are excluding numbers ending in zero):
+
+|Index|_r_|_s_|direction|
+|:---:|:-:|:-:|:-------:|
+|01<sub>4</sub>|0|0|E|
+|02<sub>4</sub>|0|1|S|
+|03<sub>4</sub>|1|1|W|
+
+This is the basic cup-like 'U' shape which is the first generation and the building block of the Hilbert curve. In this arrangement 
+the open part of the 'U' is pointing toward the left as the curve winds through the 2x2 pixel tile in a clockwise direction.
+
+As the top digits increases, the values of _r_ and _s_ will flip creating mirrored copies of the 'U' according to the rules we worked
+out earlier. The table below shows the contribution of the top digit to _r_ and _s_ and its effect on the pattern:
+
+|Index|_r_|_s_|pattern|description|
+|:---:|:-:|:-:|:-------:|
+|0*x*<sub>4</sub>|0|1|ESW|open side of 'U' on left|
+|1*x*<sub>4</sub>|0|0|SEN|right way up 'U'|
+|2*x*<sub>4</sub>|0|0|SEN|right way up 'U'|
+|3*x*<sub>4</sub>|1|0|WNE|open side of 'U' on right|
+
+We can visualize the four copies of the 'U' shape as follows:
+<p align="center">
+<img src="xorpd_0x3c_open_2.png"/>
+</p>
+
+Notice how the direction of traversal of each individual segment implies an overall counter-clockwise traversal for the higher order
+pattern. The image above is missing the bridging segments that connect the quadrants of the bigger pattern.
+These bridges correspond to index values where the last digit in base-4 is zero. We avoided reasoning about these segments earlier
+because the impact of the carry in the `not(x) + 1` calculation was hard to track, but there is a simpler way to look at them.
+If we take these index values and lop off the last zero we'll be with a simple increasing sequence with one fewer digit.
+In effect, if we take every fourth segment in a Hilbert curve, we will construct another Hilbert curve albeit mirrored in one
+axis because we reduced the number of digits and hence the balance of the number of preceding zeroes. This self-similarity
+is just a property of the self-similarity of integers! We can visualize this process as follows:
+
+<p align="center">
+<!--<img src="xorpd_0x3c_animation.gif"/>-->
+<img src="animated_3c_full_6_t3.gif"/>
+</p>
+
+ You can experiment with the Python implementation of the algorithm in [xorpd_0x3c_hilbert.py](./xorpd_0x3c_hilbert.py) (requires [Pillow](https://pillow.readthedocs.io/en/stable/)).
 
 (thanks [@eleemosynator](https://twitter.com/eleemosynator))
 
