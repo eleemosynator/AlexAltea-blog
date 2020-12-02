@@ -1422,7 +1422,7 @@ As the top digits increases, the values of _r_ and _s_ will flip creating mirror
 out earlier. The table below shows the contribution of the top digit to _r_ and _s_ and its effect on the pattern:
 
 |Index|_r_|_s_|pattern|description|
-|:---:|:-:|:-:|:-------:|
+|:---:|:-:|:-:|:-------:|---------|
 |0*x*<sub>4</sub>|0|1|ESW|open side of 'U' on left|
 |1*x*<sub>4</sub>|0|0|SEN|right way up 'U'|
 |2*x*<sub>4</sub>|0|0|SEN|right way up 'U'|
