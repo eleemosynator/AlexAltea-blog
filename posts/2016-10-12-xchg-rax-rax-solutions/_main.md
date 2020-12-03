@@ -1242,6 +1242,8 @@ from __future__ import print_function
 
 def bsf(x):
     n = 0
+    if x == 0:
+        return 0            # No good answers here
     while not (x & 1):
         x >>= 1
         n += 1
